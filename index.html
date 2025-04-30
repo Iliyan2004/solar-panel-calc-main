@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Panel Array Planner</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <!-- Mapbox and Turf.js resources -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+    
+    <!-- Mapbox GL JS -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<!-- Mapbox GL Geocoder -->
+<link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.min.js"></script>
+
+    <!-- MapboxDraw resources -->
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css" type="text/css">
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js"></script>
+    
+    <!-- Additional libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom scripts - Make sure Turf.js is loaded BEFORE these scripts -->
+    <script src="js/mapController.js"></script>
+    <script src="js/uiEnhancements.js"></script>
+    <script src="js/drawingTools.js"></script>
+    <script src="js/solarCalculator.js"></script>
+    <script src="js/exportManager.js"></script>
+    <script src="js/main.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/polygonHelpers.js"></script>
+</head>
+<body class="theme-light">
+    <header class="enhanced-header">
+        <div class="header-content">
+            <div class="logo">
+                <svg class="solar-logo" viewBox="0 0 24 24" width="32" height="32">
+                    <path d="M4,2H20A2,2 0 0,1 22,4V20A2,2 0 0,1 20,22H4A2,2 0 0,1 2,20V4A2,2 0 0,1 4,2M4,4V20H20V4H4M11,7H13V9H15V11H13V13H11V11H9V9H11V7M8,15H16V17H8V15Z" />
+                </svg>
+            </div>
+            <h1 class="app-title">Solar Panel Array Planner</h1>
+        </div>
+        <div class="theme-switch" id="theme-toggle" data-tooltip="Toggle Light/Dark Mode">
+            <i class="fas fa-moon"></i>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="slide-up">
+                <!-- Drawing Tools -->
+                <div class="section collapsible-section">
+                    <h2 class="section-title"><i class="fas fa-draw-polygon"></i> Drawing Tools <i class="fas fa-chevron-down section-toggle"></i></h2>
+                    <div class="section-content">
+                        <div class="btn-group">
+                            <button id="draw-polygon" class="btn btn-primary enhanced-btn" data-tooltip="Draw a polygon">
+                                <i class="fas fa-draw-polygon"></i> Draw Polygon
+                            </button>
+                            <button id="subtract-inner" class="btn btn-secondary enhanced-btn" data-tooltip="Draw inner polygon to exclude">
+                                <i class="fas fa-minus-circle"></i> Draw Inner Polygon
+                            </button>
+                        </div>
+                        <div class="btn-group">
+                            <button id="remove-area" class="btn btn-danger enhanced-btn" data-tooltip="Remove selected area">
+                                <i class="fas fa-eraser"></i> Remove
+                            </button>
+                            <button id="clear-all" class="btn btn-danger enhanced-btn" data-tooltip="Clear all drawn areas">
+                                <i class="fas fa-trash-alt"></i> Clear All
+                            </button>
+                        </div>
+                        <!-- Add this button inside the Sidebar Section where other buttons are located -->
+<div class="btn-group">
+    <button id="alignByLineBtn" class="btn btn-primary enhanced-btn" data-tooltip="Draw a line to align panels">
+        <i class="fas fa-align-left"></i> Align Panel Direction
+    </button>
+</div>
+
+                    </div>
+                </div>
+                
+                <!-- Solar Panel Parameters -->
+                <div class="section collapsible-section">
+                    <h2 class="section-title"><i class="fas fa-solar-panel"></i> Panel Properties <i class="fas fa-chevron-down section-toggle"></i></h2>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label class="form-label" for="panel-width">Panel Width (m)</label>
+                            <input type="number" id="panel-width" class="form-control" value="1.303" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="panel-height">Panel Height (m)</label>
+                            <input type="number" id="panel-height" class="form-control" value="2.172" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Array Parameters -->
+                <div class="section collapsible-section">
+                    <h2 class="section-title"><i class="fas fa-th"></i> Array Configuration <i class="fas fa-chevron-down section-toggle"></i></h2>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label class="form-label" for="panels-per-row">Panels per Row</label>
+                            <input type="number" id="panels-per-row" class="form-control" value="28" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rows-per-array">Rows per Array</label>
+                            <input type="number" id="rows-per-array" class="form-control" value="3" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="h-panel-spacing">Horizontal Panel Spacing (m)</label>
+                            <input type="number" id="h-panel-spacing" class="form-control" value="0.02" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="v-panel-spacing">Vertical Panel Spacing (m)</label>
+                            <input type="number" id="v-panel-spacing" class="form-control" value="0.02" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="h-array-spacing">Horizontal Array Spacing (m)</label>
+                            <input type="number" id="h-array-spacing" class="form-control" value="1" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="v-array-spacing">Vertical Array Spacing (m)</label>
+                            <input type="number" id="v-array-spacing" class="form-control" value="3" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Angle Parameters -->
+                <div class="section collapsible-section">
+                    <h2 class="section-title"><i class="fas fa-compass"></i> Panel Orientation <i class="fas fa-chevron-down section-toggle"></i></h2>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label class="form-label" for="zenith-angle">Zenith Angle (°)</label>
+                            <input type="number" id="zenith-angle" class="form-control" value="15" min="0" max="90">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <button id="calculate-arrays" class="btn btn-success enhanced-btn" data-tooltip="Calculate and draw solar panel arrays">
+                    <i class="fas fa-calculator"></i> Calculate & Draw Arrays
+                </button>
+                
+                <!-- Results -->
+                <div class="section collapsible-section" style="margin-top: 1rem;">
+                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Results <i class="fas fa-chevron-down section-toggle"></i></h2>
+                    <div class="section-content">
+                        <div class="results-card fade-in">
+                            <div class="results-list">
+                                <div class="result-item">
+                                    <span class="result-label">Total Area</span>
+                                    <span class="result-value"><span id="total-area">0</span> m²</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Total Panels</span>
+                                    <span class="result-value" id="total-panels">0</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Est. Capacity</span>
+                                    <span class="result-value"><span id="estimated-capacity">0</span> kW</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+    <script src="js/themeToggle.js"></script>
+    <script>
+        const ACCESS_TOKEN = 'pk.eyJ1IjoiaWxpeWFuLWhpcmFuaSIsImEiOiJjbThmNHRxMDMwYTJ2MmpxdHAzbDZxOTNuIn0.nw9ek8mR679n6H-C-Ydhzg';
+        
+        mapboxgl.accessToken = ACCESS_TOKEN;
+        
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [73.0551, 33.6844], // Islamabad
+            zoom: 1
+        });
+    </script>
+
+    <script>
+        // Remove the Show Panels button from UI Controls method
+        MapController.prototype.addUIControls = function() {
+            // Add screenshot functionality only
+            $('#calculate-arrays').after(
+                '<div class="mt-2"><button id="take-screenshot" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 w-full">Take Screenshot</button></div>'
+            );
+            
+            // Add screenshot functionality
+            $('#take-screenshot').click(() => {
+                this.takeScreenshot();
+            });
+
+            // Export functionality for saving designs
+            $('#results').after(
+                '<div class="mt-4">' +
+                '<button id="export-design" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-full">Export Design</button>' +
+                '</div>' +
+                '<div class="mt-2 text-xs text-gray-500 italic">' +
+                'Tip: Click on any array to remove it. Use keyboard shortcuts: D (draw), R (remove), C (clear), ESC (cancel)' +
+                '</div>'
+            );
+            
+            // Add input class for easy selection
+            $('input[type="number"]').addClass('parameter-input');
+        };
+
+
+    // Initialize Mapbox Draw
+    const draw = new MapboxDraw({
+        displayControlsDefault: false, // Disable default controls
+        controls: {
+            line_string: true,  // Enable the line drawing control
+            trash: true          // Enable the delete tool
+        }
+    });
+    </script>
+    <script>
+    // Add event listener for the "Align Panels by Line" button
+    $('#alignByLineBtn').click(() => {
+        if (drawingTools) {
+            drawingTools.setAlignByLineMode(!drawingTools.alignByLineMode);
+        }
+    });
+</script>
+</body>
+</html>
